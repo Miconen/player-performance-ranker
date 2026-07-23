@@ -13,12 +13,10 @@ custom_ehb_weights:
   "tzhaar_ket_raks_challenges": 0.0
   "inferno": 1.0
   "fortis_colosseum": 1.0
-  "awakened_duke_sucellus": 0.5
-  "awakened_leviathan": 0.5
-  "awakened_vardorvis": 0.5
-  "awakened_whisperer": 0.5
   "theatre_of_blood_hard_mode": 0.3
+  "theatre_of_blood": 0.15
   "chambers_of_xeric_challenge_mode": 0.2
+  "chambers_of_xeric": 0.1
   "tombs_of_amascut_expert": 0.2
 
 ca_tier_values:
