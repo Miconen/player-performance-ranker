@@ -203,5 +203,5 @@ def detect_region(players: list[Player]) -> list[Player]:
         elif any(re.search(kw, tz) for kw in eu_keywords):
             p.region = "EU"
         else:
-            p.region = "Other"
+            p.region = p.time_zone if p.time_zone.strip() else "Other"
     return players
