@@ -317,9 +317,9 @@ def fetch_wom_player_data(players: List[Player], config: Config, refresh: bool =
                 p.wom_ehp = player_data.get('ehp', 0.0)
                 
                 # Extract boss killcounts
-                snapshot = player_data.get('latestSnapshot', {})
-                data = snapshot.get('data', {})
-                bosses = data.get('bosses', {})
+                snapshot = player_data.get('latestSnapshot') or {}
+                data = snapshot.get('data') or {}
+                bosses = data.get('bosses') or {}
                 
                 for boss_name, boss_info in bosses.items():
                     kills = boss_info.get('kills', -1)
