@@ -29,7 +29,7 @@ def run_pipeline(config_path: str):
         calculate_activity_score(p, config)
         
     print("Calculating synergy...")
-    players = calculate_synergy(players)
+    players = calculate_synergy(players, config)
         
     print("Normalizing scores...")
     players = apply_s_curve_normalization(players)
@@ -45,7 +45,7 @@ def export_to_csv(players: List[Player], output_path: str):
     with open(output_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow([
-            "RSN", "Discord Name", "Total Score (0-100)", "Raw Points",
+            "RSN", "Total Score (0-100)", "Raw Points",
             "PvM Score", "Activity Score", "CA Score",
             "Tags", "Avg Event Percentile", "Peak Event Percentile", "Frequently Plays With"
         ])
@@ -53,7 +53,6 @@ def export_to_csv(players: List[Player], output_path: str):
         for p in players:
             writer.writerow([
                 p.rsn,
-                p.discord_name,
                 p.total_score,
                 p.raw_score,
                 p.score_breakdown.get('pvm_score', 0),

@@ -5,24 +5,34 @@ import math
 def calculate_ca_score(player: Player, config: Config) -> Player:
     ca_values = config.ca_tier_values
     
-    # We ideally want to use internal CA data, but if it's just raw task completions
-    # we would sum them. The prompt mentioned "internal_ca_achievements" is a list.
-    # For now, let's heavily rely on the self-reported `csv_ca_tier` as requested in the plan
-    # "If internal API is empty, we check the csv_ca_tier"
-    
     tier_str = player.csv_ca_tier.lower()
     score = 0.0
     
-    if "grandmaster" in tier_str or "gm" in tier_str:
-        score = ca_values.get("Grandmaster", 0)
+    # We heavily base this on the internal CA count since it reflects verified completions
+    ca_count = len(player.internal_ca_achievements)
+    
+    if ca_count > 400:
+        score = ca_values.get("Grandmaster", 40)
         player.tags.append("#GM")
-    elif "master" in tier_str:
-        score = ca_values.get("Master", 0)
+    elif ca_count > 300:
+        score = ca_values.get("Master", 25)
         player.tags.append("#MasterCA")
-    elif "elite" in tier_str:
-        score = ca_values.get("Elite", 0)
-    elif "hard" in tier_str:
-        score = ca_values.get("Hard", 0)
+    elif ca_count > 200:
+        score = ca_values.get("Elite", 10)
+    elif ca_count > 0:
+        score = ca_values.get("Hard", 5)
+    else:
+        # Fallback to self-reported CSV if API returned no data
+        if "grandmaster" in tier_str or "gm" in tier_str:
+            score = ca_values.get("Grandmaster", 40)
+            player.tags.append("#GM")
+        elif "master" in tier_str:
+            score = ca_values.get("Master", 25)
+            player.tags.append("#MasterCA")
+        elif "elite" in tier_str:
+            score = ca_values.get("Elite", 10)
+        elif "hard" in tier_str:
+            score = ca_values.get("Hard", 5)
         
     player.score_breakdown['ca_score'] = score
     player.raw_score += score
@@ -81,7 +91,27 @@ def calculate_pvm_score(player: Player, config: Config) -> Player:
 def calculate_activity_score(player: Player, config: Config) -> Player:
     score = 0.0
     
-    # Very simple activity scoring based on SOTW / Bingo placements if available
+    # 75% Weight to Average Percentile Performance (Max ~75 points)
+    performance_score = player.avg_event_percentile * 0.75
+    score += performance_score
+            
+    # 25% Weight to Volume (Events played, EHB, XP)
+    event_count_score = min(len(player.wom_event_stats) * 5, 10)
+    
+    total_ehb = sum(stat.ehb_gained for stat in player.wom_event_stats)
+    total_xp = sum(stat.non_combat_xp_gained for stat in player.wom_event_stats)
+    
+    # Cap EHB at 10 pts, XP at 5 pts
+    ehb_score = min(total_ehb / 5.0, 10)
+    xp_score = min(total_xp / 5000000.0, 5)
+    
+    volume_score = event_count_score + ehb_score + xp_score
+    score += volume_score
+    
+    if total_ehb > 50 or total_xp > 50000000:
+        player.tags.append("#Grinder")
+
+    # Add flat participation points for internal clan events
     for event in player.clan_events:
         placement = event.get('placement', 999)
         if placement == 1:
@@ -90,41 +120,6 @@ def calculate_activity_score(player: Player, config: Config) -> Player:
             score += 10
         elif placement <= 10:
             score += 5
-            
-    # WOM Event scoring (EHB / XP)
-    total_ehb = sum(stat.ehb_gained for stat in player.wom_event_stats)
-    total_xp = sum(stat.non_combat_xp_gained for stat in player.wom_event_stats)
-    
-    # +1 pt per 5 EHB gained across tracked events, cap at 50 pts
-    ehb_score = min(total_ehb / 5.0, 50)
-    score += ehb_score
-    
-    # +1 pt per 5m XP, cap at 30 pts
-    xp_score = min(total_xp / 5000000.0, 30)
-    score += xp_score
-    
-    if ehb_score > 20 or xp_score > 20:
-        player.tags.append("#Grinder")
-
-    # Add points for percentile performance
-    percentile_weights = config.event_percentile_weights
-    top_10 = percentile_weights.get("top_10_percent", 40)
-    top_25 = percentile_weights.get("top_25_percent", 25)
-    above_median = percentile_weights.get("above_median", 10)
-    
-    if player.avg_event_percentile >= 90:
-        score += top_10
-    elif player.avg_event_percentile >= 75:
-        score += top_25
-    elif player.avg_event_percentile >= 50:
-        score += above_median
-
-    if player.peak_event_percentile >= 90:
-        score += (top_10 * 0.5)
-    elif player.peak_event_percentile >= 75:
-        score += (top_25 * 0.5)
-    elif player.peak_event_percentile >= 50:
-        score += (above_median * 0.5)
 
     # Availability text parsing
     avail_lower = player.availability_notes.lower()
@@ -133,7 +128,7 @@ def calculate_activity_score(player: Player, config: Config) -> Player:
     if "festival" in avail_lower or "vacation" in avail_lower or "busy" in avail_lower:
         player.tags.append("#Limited_Time")
 
-    player.score_breakdown['activity_score'] = score
+    player.score_breakdown['activity_score'] = round(score, 2)
     player.raw_score += score
     return player
 
@@ -146,33 +141,47 @@ def apply_s_curve_normalization(players: list[Player]) -> list[Player]:
         max_raw = 1 # prevent div by zero
         
     for p in players:
-        # Simple logistic/S-curve mapping
-        # We map the raw score [0, max_raw] to an x value [-5, 5] for the sigmoid
-        x = (p.raw_score / max_raw) * 10 - 5
-        sigmoid = 1 / (1 + math.exp(-x))
-        # Map sigmoid [0, 1] to [0, 100]
-        p.total_score = round(sigmoid * 100, 2)
+        # Use a logarithmic scale to compress extreme outliers and expand the middle pack.
+        # This solves the issue of linear jumps flattening average players to 15/100.
+        ratio = math.log(p.raw_score + 1) / math.log(max_raw + 1)
+        p.total_score = round(ratio * 100, 2)
         
     return players
 
-def calculate_synergy(players: list[Player]) -> list[Player]:
+def calculate_synergy(players: list[Player], config: Config) -> list[Player]:
     # Build a lookup of internal_user_id -> player
     user_id_map = {p.internal_user_id: p for p in players if p.internal_user_id}
     
+    # We use the global records cache to map record_id -> list of teammate user_ids
+    guild_records = getattr(config, 'guild_records_cache', {})
+    teammates_data = guild_records.get('teammates', [])
+    
+    # Map record_id -> set of user_ids
+    record_to_users = {}
+    for t in teammates_data:
+        rid = t.get('record_id')
+        uid = t.get('user_id')
+        if rid and uid:
+            if rid not in record_to_users:
+                record_to_users[rid] = set()
+            record_to_users[rid].add(uid)
+    
     for p in players:
-        teammates = {} # teammate internal_user_id -> count of shared records
+        teammate_counts = {} # teammate internal_user_id -> count of shared records
         for record in p.pvm_records:
-            team = record.get('team', [])
-            if len(team) > 1:
-                for member in team:
-                    uid = member.get('user_id')
-                    if uid and uid != p.internal_user_id and uid in user_id_map:
-                        teammates[uid] = teammates.get(uid, 0) + 1
+            rid = record.get('record_id')
+            if rid and rid in record_to_users:
+                # Get the teammates on this specific record
+                team_uids = record_to_users[rid]
+                if len(team_uids) > 1:
+                    for uid in team_uids:
+                        if uid != p.internal_user_id and uid in user_id_map:
+                            teammate_counts[uid] = teammate_counts.get(uid, 0) + 1
         
         # Now format it into a string
         synergy_list = []
         # Sort by most shared records
-        sorted_teammates = sorted(teammates.items(), key=lambda item: item[1], reverse=True)
+        sorted_teammates = sorted(teammate_counts.items(), key=lambda item: item[1], reverse=True)
         for uid, count in sorted_teammates:
             teammate = user_id_map[uid]
             name = teammate.discord_name if teammate.discord_name else teammate.rsn

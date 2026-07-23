@@ -102,6 +102,33 @@ def fetch_internal_api_data(players: List[Player], config: Config, refresh: bool
         except Exception as e:
             print(f"Error fetching internal data: {e}")
 
+    # Also fetch the global records to map teammates for synergy
+    records_cache_path = os.path.join(config.cache_directory, 'internal_api', 'guild_records.json')
+    guild_records = {}
+    if os.path.exists(records_cache_path) and not refresh:
+        try:
+            with open(records_cache_path, 'r', encoding='utf-8') as f:
+                guild_records = json.load(f)
+        except:
+            guild_records = {}
+            
+    if not guild_records or refresh:
+        url_records = f"{config.internal_api_base_url}/api/v1/guilds/{config.guild_id}/records"
+        try:
+            resp = requests.get(url_records)
+            if resp.status_code == 200:
+                guild_records = resp.json()
+                cache_dir = os.path.dirname(records_cache_path)
+                os.makedirs(cache_dir, exist_ok=True)
+                with open(records_cache_path, 'w', encoding='utf-8') as f:
+                    json.dump(guild_records, f)
+        except Exception as e:
+            print(f"Error fetching guild records: {e}")
+
+    # Attach teammates data to players globally or handle it in rules
+    # It's cleaner to save it temporarily in config or just pass it out. We will stash it in config.
+    config.guild_records_cache = guild_records
+
     # Build a lookup map from RSN to internal user data
     rsn_map = {}
     for user_data in guild_data:
