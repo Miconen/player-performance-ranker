@@ -1,4 +1,6 @@
 data_cache/
 data/draft_ratings.csv
+data/signups.csv
+config.yaml
 __pycache__/
 src/__pycache__/
