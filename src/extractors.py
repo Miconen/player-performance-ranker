@@ -202,15 +202,24 @@ def fetch_wom_event_data(players: List[Player], config: Config, refresh: bool = 
                 event_data = json.load(f)
         else:
             try:
-                print(f"Fetching WOM Event {eid}...")
-                resp = requests.get(f"{wom_base_url}/competitions/{eid}")
-                if resp.status_code == 200:
-                    event_data = resp.json()
-                    with open(cache_path, 'w', encoding='utf-8') as f:
-                        json.dump(event_data, f)
-                else:
-                    print(f"Failed to fetch WOM event {eid}. Status: {resp.status_code}")
-                time.sleep(1) # Rate limit protection
+                max_retries = 3
+                for attempt in range(max_retries):
+                    print(f"Fetching WOM Event {eid}...")
+                    resp = requests.get(f"{wom_base_url}/competitions/{eid}")
+                    if resp.status_code == 200:
+                        event_data = resp.json()
+                        with open(cache_path, 'w', encoding='utf-8') as f:
+                            json.dump(event_data, f)
+                        time.sleep(1) # Rate limit protection
+                        break
+                    elif resp.status_code == 429:
+                        retry_after = int(resp.headers.get("Retry-After", 60))
+                        print(f"Rate limited (429) fetching event {eid}. Waiting {retry_after} seconds before retrying...")
+                        time.sleep(retry_after)
+                    else:
+                        print(f"Failed to fetch WOM event {eid}. Status: {resp.status_code}")
+                        time.sleep(1)
+                        break
             except Exception as e:
                 print(f"Error fetching WOM event {eid}: {e}")
                 
@@ -300,15 +309,24 @@ def fetch_wom_player_data(players: List[Player], config: Config, refresh: bool =
                     player_data = json.load(f)
             else:
                 try:
-                    print(f"Fetching WOM Player {p.rsn}...")
-                    resp = requests.get(f"{wom_base_url}/players/{safe_rsn}")
-                    if resp.status_code == 200:
-                        player_data = resp.json()
-                        with open(cache_path, 'w', encoding='utf-8') as f:
-                            json.dump(player_data, f)
-                    else:
-                        print(f"Failed to fetch WOM player {p.rsn}. Status: {resp.status_code}")
-                    time.sleep(1) # Rate limit protection
+                    max_retries = 3
+                    for attempt in range(max_retries):
+                        print(f"Fetching WOM Player {p.rsn}...")
+                        resp = requests.get(f"{wom_base_url}/players/{safe_rsn}")
+                        if resp.status_code == 200:
+                            player_data = resp.json()
+                            with open(cache_path, 'w', encoding='utf-8') as f:
+                                json.dump(player_data, f)
+                            time.sleep(1) # Rate limit protection
+                            break
+                        elif resp.status_code == 429:
+                            retry_after = int(resp.headers.get("Retry-After", 60))
+                            print(f"Rate limited (429) fetching player {p.rsn}. Waiting {retry_after} seconds before retrying...")
+                            time.sleep(retry_after)
+                        else:
+                            print(f"Failed to fetch WOM player {p.rsn}. Status: {resp.status_code}")
+                            time.sleep(1)
+                            break
                 except Exception as e:
                     print(f"Error fetching WOM player {p.rsn}: {e}")
                     
