@@ -30,8 +30,7 @@ def calculate_ca_score(player: Player, config: Config) -> Player:
         elif "hard" in tier_str:
             score = ca_values.get("Hard", 5)
         
-    player.score_breakdown['ca_score'] = score
-    player.raw_score += score
+    player.score_breakdown['raw_ca'] = score
     return player
 
 def calculate_clan_records_score(player: Player, config: Config) -> Player:
@@ -50,36 +49,21 @@ def calculate_clan_records_score(player: Player, config: Config) -> Player:
         elif pos == 3:
             score += 5.0
             
-    player.score_breakdown['clan_records_score'] = score
-    player.raw_score += score
+    player.score_breakdown['raw_clan_records'] = score
     return player
 
-def calculate_ehb_ehp_score(player: Player, config: Config) -> Player:
-    score = 0.0
-    
-    # 1. Standard EHB and EHP
-    # Scale them to grant decent points without breaking the S-curve
-    # EHB is much harder to get than EHP.
-    ehb_pts = player.wom_ehb / 25.0
-    ehp_pts = player.wom_ehp / 50.0
-    
-    score += ehb_pts + ehp_pts
-    
-    # 2. Custom EHB (Valuing harder bosses higher)
+def calculate_custom_ehb_score(player: Player, config: Config) -> Player:
     custom_ehb_pts = 0.0
     for boss_name, kills in player.boss_kills.items():
         boss_weight = config.custom_ehb_weights.get(boss_name, 0.0)
         custom_ehb_pts += (kills * boss_weight)
         
-    score += custom_ehb_pts
-    
-    # 3. Maxed Bonus
-    if player.is_maxed:
-        score += 15.0
-        
-    player.score_breakdown['ehb_ehp_score'] = round(score, 2)
-    player.raw_score += score
-        
+    player.score_breakdown['raw_custom_ehb'] = custom_ehb_pts
+    return player
+
+def calculate_ehp_score(player: Player, config: Config) -> Player:
+    score = player.wom_ehp
+    player.score_breakdown['raw_ehp'] = score
     return player
 
 def calculate_activity_score(player: Player, config: Config) -> Player:
@@ -89,17 +73,13 @@ def calculate_activity_score(player: Player, config: Config) -> Player:
     performance_score = player.avg_event_percentile * 0.75
     score += performance_score
             
-    # 25% Weight to Volume (Events played, EHB, XP)
+    # 25% Weight to Volume (Events played, XP)
     event_count_score = min(len(player.wom_event_stats) * 5, 10)
     
-    total_ehb = sum(stat.ehb_gained for stat in player.wom_event_stats)
     total_xp = sum(stat.non_combat_xp_gained for stat in player.wom_event_stats)
-    
-    # Cap EHB at 10 pts, XP at 5 pts
-    ehb_score = min(total_ehb / 5.0, 10)
     xp_score = min(total_xp / 5000000.0, 5)
     
-    volume_score = event_count_score + ehb_score + xp_score
+    volume_score = event_count_score + xp_score
     score += volume_score
 
     # Add flat participation points for internal clan events
@@ -112,23 +92,44 @@ def calculate_activity_score(player: Player, config: Config) -> Player:
         elif placement <= 10:
             score += 5
 
-    player.score_breakdown['activity_score'] = round(score, 2)
-    player.raw_score += score
+    player.score_breakdown['raw_activity'] = round(score, 2)
     return player
 
 def apply_s_curve_normalization(players: list[Player]) -> list[Player]:
     if not players:
         return players
         
-    max_raw = max(p.raw_score for p in players)
-    if max_raw == 0:
-        max_raw = 1 # prevent div by zero
+    categories = ['ca', 'clan_records', 'custom_ehb', 'ehp', 'activity']
+    
+    for cat in categories:
+        raw_key = f"raw_{cat}"
+        norm_key = f"norm_{cat}"
+        max_raw = max((p.score_breakdown.get(raw_key, 0.0) for p in players), default=0.0)
         
+        if max_raw == 0:
+            max_raw = 1.0 # prevent div by zero
+            
+        for p in players:
+            raw = p.score_breakdown.get(raw_key, 0.0)
+            
+            # Waning logarithmic curve
+            ratio = math.log(raw + 1) / math.log(max_raw + 1)
+            
+            # Scale each category score out of 100 to balance them
+            norm_score = ratio * 100.0
+            
+            # Add small maxed account bonus ONLY to EHP
+            if cat == 'ehp' and getattr(p, 'is_maxed', False):
+                norm_score = min(norm_score + 10.0, 100.0)
+                
+            p.score_breakdown[norm_key] = round(norm_score, 2)
+            
+    # Calculate Total Score as an average of the 5 balanced categories
     for p in players:
-        # Use a logarithmic scale to compress extreme outliers and expand the middle pack.
-        # This solves the issue of linear jumps flattening average players to 15/100.
-        ratio = math.log(p.raw_score + 1) / math.log(max_raw + 1)
-        p.total_score = round(ratio * 100, 2)
+        total = sum(p.score_breakdown.get(f"norm_{c}", 0.0) for c in categories)
+        p.total_score = round(total / len(categories), 2)
+        # We can store the raw sum for transparency/debug if needed
+        p.raw_score = round(sum(p.score_breakdown.get(f"raw_{c}", 0.0) for c in categories), 2)
         
     return players
 
