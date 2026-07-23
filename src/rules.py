@@ -188,3 +188,19 @@ def calculate_synergy(players: list[Player], config: Config) -> list[Player]:
         p.frequently_plays_with = synergy_list
         
     return players
+
+import re
+
+def detect_region(players: list[Player]) -> list[Player]:
+    na_keywords = [r'\bna\b', r'\best\b', r'\bcst\b', r'\bmst\b', r'\bpst\b', r'\bamerica\b', r'\busa\b', r'\bcanada\b', r'\bus\b', r'\beastern\b', r'\bcentral\b', r'\bpacific\b', r'\bmountain\b', r'\bca\b']
+    eu_keywords = [r'\beu\b', r'\buk\b', r'\bgmt\b', r'\bbst\b', r'\bcet\b', r'\bcest\b', r'\beurope\b', r'\bengland\b', r'\bbelgium\b', r'\bnetherlands\b', r'\bgermany\b', r'\bgb\b']
+    
+    for p in players:
+        tz = p.time_zone.lower()
+        if any(re.search(kw, tz) for kw in na_keywords):
+            p.region = "NA"
+        elif any(re.search(kw, tz) for kw in eu_keywords):
+            p.region = "EU"
+        else:
+            p.region = "Other"
+    return players
