@@ -11,8 +11,8 @@ wom_event_ids:
 
 custom_ehb_weights:
   "tzhaar_ket_raks_challenges": 0.0
-  "inferno": 1.0
-  "fortis_colosseum": 1.0
+  "tzkal_zuk": 1.0
+  "sol_heredit": 1.0
   "theatre_of_blood_hard_mode": 0.3
   "theatre_of_blood": 0.15
   "chambers_of_xeric_challenge_mode": 0.2
