@@ -10,6 +10,8 @@ class WomEventStat:
     combat_xp_gained: int = 0
     non_combat_xp_gained: int = 0
     percentile: float = 0.0
+    wom_ids_used: List[int] = field(default_factory=list) # Which alt(s) actually gained points in this event
+    team_name: str = "" # To track who they played with
 
 @dataclass
 class Player:
@@ -43,6 +45,8 @@ class Player:
     total_score: float = 0.0  # Clamped score
     tags: List[str] = field(default_factory=list) 
     frequently_plays_with: List[str] = field(default_factory=list)
+    played_mostly_on_alt: bool = False
+    xp_preference: str = ""
 
     # Relative performance metrics across all events
     avg_event_percentile: float = 0.0

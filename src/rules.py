@@ -149,46 +149,70 @@ def apply_s_curve_normalization(players: list[Player]) -> list[Player]:
     return players
 
 def calculate_synergy(players: list[Player], config: Config) -> list[Player]:
-    # Build a lookup of internal_user_id -> player
-    user_id_map = {p.internal_user_id: p for p in players if p.internal_user_id}
-    
-    # We use the global records cache to map record_id -> list of teammate user_ids
-    guild_records = getattr(config, 'guild_records_cache', {})
-    teammates_data = guild_records.get('teammates', [])
-    
-    # Map record_id -> set of user_ids
-    record_to_users = {}
-    for t in teammates_data:
-        rid = t.get('record_id')
-        uid = t.get('user_id')
-        if rid and uid:
-            if rid not in record_to_users:
-                record_to_users[rid] = set()
-            record_to_users[rid].add(uid)
-    
     for p in players:
-        teammate_counts = {} # teammate internal_user_id -> count of shared records
-        for record in p.pvm_records:
-            rid = record.get('record_id')
-            if rid and rid in record_to_users:
-                # Get the teammates on this specific record
-                team_uids = record_to_users[rid]
-                if len(team_uids) > 1:
-                    for uid in team_uids:
-                        if uid != p.internal_user_id and uid in user_id_map:
-                            teammate_counts[uid] = teammate_counts.get(uid, 0) + 1
+        # 1. Alt account check
+        played_on_main = 0
+        played_on_alt = 0
+        for stat in p.wom_event_stats:
+            if stat.wom_ids_used:
+                if p.wom_id in stat.wom_ids_used:
+                    played_on_main += 1
+                else:
+                    played_on_alt += 1
+                    
+        if played_on_alt >= played_on_main and played_on_alt > 0:
+            p.played_mostly_on_alt = True
+            p.tags.append("#Playing_On_Alt")
+            
+        # 2. XP Preference check
+        total_combat_xp = sum(stat.combat_xp_gained for stat in p.wom_event_stats)
+        total_non_combat_xp = sum(stat.non_combat_xp_gained for stat in p.wom_event_stats)
         
-        # Now format it into a string
+        if total_combat_xp > total_non_combat_xp:
+            p.xp_preference = "Combat"
+        elif total_non_combat_xp > total_combat_xp:
+            p.xp_preference = "Skilling"
+        else:
+            p.xp_preference = "Balanced"
+
+    # 3. Teammates check
+    # Map each player to a set of their event teams
+    player_teams = {}
+    for p in players:
+        teams = set()
+        for stat in p.wom_event_stats:
+            if stat.team_name:
+                teams.add(f"wom_{stat.event_id}_{stat.team_name}")
+                
+        for event in p.clan_events:
+            placement = event.get('placement', 999)
+            solo = event.get('solo', True)
+            if not solo and placement != 999:
+                teams.add(f"clan_{event.get('name')}_{placement}")
+        
+        player_teams[p.rsn] = teams
+
+    for p in players:
+        teammate_counts = {}
+        my_teams = player_teams.get(p.rsn, set())
+        
+        for other_p in players:
+            if p.rsn == other_p.rsn:
+                continue
+            
+            other_teams = player_teams.get(other_p.rsn, set())
+            shared_teams = my_teams.intersection(other_teams)
+            
+            if shared_teams:
+                teammate_counts[other_p.rsn] = len(shared_teams)
+
         synergy_list = []
-        # Sort by most shared records
         sorted_teammates = sorted(teammate_counts.items(), key=lambda item: item[1], reverse=True)
-        for uid, count in sorted_teammates:
-            teammate = user_id_map[uid]
-            name = teammate.discord_name if teammate.discord_name else teammate.rsn
-            if count > 1:
-                synergy_list.append(f"{name} ({count} records)")
+        for rsn, count in sorted_teammates:
+            if count >= 2:
+                synergy_list.append(f"{rsn} ({count} times)")
             else:
-                synergy_list.append(f"{name}")
+                synergy_list.append(f"{rsn}")
                 
         p.frequently_plays_with = synergy_list
         
