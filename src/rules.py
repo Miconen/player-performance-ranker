@@ -28,6 +28,8 @@ def calculate_ca_score(player: Player, config: Config) -> Player:
             player.ca_tier = "Hard"
         else:
             player.ca_tier = "None"
+            
+    player.score_breakdown['raw_ca'] = config.ca_tier_values.get(player.ca_tier, 0.0)
         
     return player
 
@@ -97,7 +99,7 @@ def apply_s_curve_normalization(players: list[Player]) -> list[Player]:
     if not players:
         return players
         
-    categories = ['clan_records', 'custom_ehb', 'ehp', 'activity']
+    categories = ['clan_records', 'custom_ehb', 'ehp', 'activity', 'ca']
     
     for cat in categories:
         raw_key = f"raw_{cat}"
@@ -122,17 +124,14 @@ def apply_s_curve_normalization(players: list[Player]) -> list[Player]:
                 
             p.score_breakdown[norm_key] = round(norm_score, 2)
             
-    # Calculate Total Score by clamping raw points across all users
+    # Calculate Total Score by averaging the normalized category scores
     for p in players:
         p.raw_score = round(sum(p.score_breakdown.get(f"raw_{c}", 0.0) for c in categories), 2)
         
-    max_raw_total = max((p.raw_score for p in players), default=0.0)
-    if max_raw_total == 0:
-        max_raw_total = 1.0
-        
-    for p in players:
-        ratio = math.log(p.raw_score + 1) / math.log(max_raw_total + 1)
-        p.total_score = round(ratio * 100, 2)
+        # Sum the normalized scores
+        total_norm = sum(p.score_breakdown.get(f"norm_{c}", 0.0) for c in categories)
+        # Average them
+        p.total_score = round(total_norm / len(categories), 2)
         
     return players
 
