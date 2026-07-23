@@ -49,6 +49,7 @@ class Player:
     score_breakdown: Dict[str, float] = field(default_factory=dict) 
     raw_score: float = 0.0
     total_score: float = 0.0  # Clamped score
+    ca_tier: str = "None"
     frequently_plays_with: List[str] = field(default_factory=list)
     played_mostly_on_alt: bool = False
     region: str = "Other"

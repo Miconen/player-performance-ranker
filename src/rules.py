@@ -3,34 +3,32 @@ from src.config import Config
 import math
 
 def calculate_ca_score(player: Player, config: Config) -> Player:
-    ca_values = config.ca_tier_values
-    
     tier_str = player.csv_ca_tier.lower()
-    score = 0.0
     
     # We heavily base this on the internal CA count since it reflects verified completions
     ca_count = len(player.internal_ca_achievements)
     
     if ca_count > 400:
-        score = ca_values.get("Grandmaster", 40)
+        player.ca_tier = "Grandmaster"
     elif ca_count > 300:
-        score = ca_values.get("Master", 25)
+        player.ca_tier = "Master"
     elif ca_count > 200:
-        score = ca_values.get("Elite", 10)
+        player.ca_tier = "Elite"
     elif ca_count > 0:
-        score = ca_values.get("Hard", 5)
+        player.ca_tier = "Hard"
     else:
         # Fallback to self-reported CSV if API returned no data
         if "grandmaster" in tier_str or "gm" in tier_str:
-            score = ca_values.get("Grandmaster", 40)
+            player.ca_tier = "Grandmaster"
         elif "master" in tier_str:
-            score = ca_values.get("Master", 25)
+            player.ca_tier = "Master"
         elif "elite" in tier_str:
-            score = ca_values.get("Elite", 10)
+            player.ca_tier = "Elite"
         elif "hard" in tier_str:
-            score = ca_values.get("Hard", 5)
+            player.ca_tier = "Hard"
+        else:
+            player.ca_tier = "None"
         
-    player.score_breakdown['raw_ca'] = score
     return player
 
 def calculate_clan_records_score(player: Player, config: Config) -> Player:
@@ -99,7 +97,7 @@ def apply_s_curve_normalization(players: list[Player]) -> list[Player]:
     if not players:
         return players
         
-    categories = ['ca', 'clan_records', 'custom_ehb', 'ehp', 'activity']
+    categories = ['clan_records', 'custom_ehb', 'ehp', 'activity']
     
     for cat in categories:
         raw_key = f"raw_{cat}"
