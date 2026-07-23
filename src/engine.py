@@ -3,7 +3,7 @@ from typing import List
 from src.config import Config
 from src.models import Player
 from src.extractors import parse_signup_sheet, fetch_internal_api_data, fetch_wom_event_data
-from src.rules import calculate_ca_score, calculate_clan_records_score, calculate_ehb_ehp_score, calculate_activity_score, apply_s_curve_normalization, calculate_synergy, detect_region
+from src.rules import calculate_ca_score, calculate_clan_records_score, calculate_custom_ehb_score, calculate_ehp_score, calculate_activity_score, apply_s_curve_normalization, calculate_synergy, detect_region
 
 def run_pipeline(config_path: str):
     config = Config(config_path)
@@ -30,7 +30,8 @@ def run_pipeline(config_path: str):
     for p in players:
         calculate_ca_score(p, config)
         calculate_clan_records_score(p, config)
-        calculate_ehb_ehp_score(p, config)
+        calculate_custom_ehb_score(p, config)
+        calculate_ehp_score(p, config)
         calculate_activity_score(p, config)
         
     print("Calculating synergy...")
@@ -53,23 +54,25 @@ def export_to_csv(players: List[Player], output_path: str):
     with open(output_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow([
-            "RSN", "Total Score (0-100)", "Raw Points",
-            "Clan Records Score", "EHB/EHP Score", "Activity Score", "CA Score",
-            "Played Mostly on Alt", "Region", "Avg Event Percentile", "Peak Event Percentile", "Frequently Plays With"
+            "RSN", "Total Score (0-100)", 
+            "Availability", "Ironman", "Region",
+            "Activity Score (0-100)", "Custom EHB Score (0-100)", "EHP Score (0-100)", 
+            "CA Score (0-100)", "Clan Records Score (0-100)",
+            "Played Mostly on Alt", "Frequently Plays With"
         ])
         
         for p in players:
             writer.writerow([
                 p.rsn,
                 p.total_score,
-                p.raw_score,
-                p.score_breakdown.get('clan_records_score', 0),
-                p.score_breakdown.get('ehb_ehp_score', 0),
-                p.score_breakdown.get('activity_score', 0),
-                p.score_breakdown.get('ca_score', 0),
-                "Yes" if p.played_mostly_on_alt else "No",
+                p.availability_notes,
+                "Yes" if p.is_ironman else "No",
                 p.region,
-                p.avg_event_percentile,
-                p.peak_event_percentile,
+                p.score_breakdown.get('norm_activity', 0),
+                p.score_breakdown.get('norm_custom_ehb', 0),
+                p.score_breakdown.get('norm_ehp', 0),
+                p.score_breakdown.get('norm_ca', 0),
+                p.score_breakdown.get('norm_clan_records', 0),
+                "Yes" if p.played_mostly_on_alt else "No",
                 ", ".join(p.frequently_plays_with)
             ])
