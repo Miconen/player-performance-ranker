@@ -44,3 +44,7 @@ class Config:
     @property
     def event_percentile_weights(self) -> dict:
         return self._config.get("event_percentile_weights", {})
+
+    @property
+    def custom_ehb_weights(self) -> dict:
+        return self._config.get("custom_ehb_weights", {})

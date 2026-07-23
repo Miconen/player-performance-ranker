@@ -39,6 +39,12 @@ class Player:
     # --- 3. Enriched Data (From WOM API Events) ---
     wom_event_stats: List[WomEventStat] = field(default_factory=list)
     
+    # --- 3.5. Enriched Data (From WOM API Profile) ---
+    wom_ehb: float = 0.0
+    wom_ehp: float = 0.0
+    boss_kills: Dict[str, int] = field(default_factory=dict)
+    is_maxed: bool = False
+    
     # --- 4. Scoring & Output (From the Rule Engine) ---
     score_breakdown: Dict[str, float] = field(default_factory=dict) 
     raw_score: float = 0.0

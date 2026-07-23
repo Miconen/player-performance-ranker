@@ -3,7 +3,7 @@ from typing import List
 from src.config import Config
 from src.models import Player
 from src.extractors import parse_signup_sheet, fetch_internal_api_data, fetch_wom_event_data
-from src.rules import calculate_ca_score, calculate_pvm_score, calculate_activity_score, apply_s_curve_normalization, calculate_synergy, detect_region
+from src.rules import calculate_ca_score, calculate_clan_records_score, calculate_ehb_ehp_score, calculate_activity_score, apply_s_curve_normalization, calculate_synergy, detect_region
 
 def run_pipeline(config_path: str):
     config = Config(config_path)
@@ -18,6 +18,10 @@ def run_pipeline(config_path: str):
     print("Fetching internal API data...")
     players = fetch_internal_api_data(players, config)
 
+    print("Fetching WOM player data...")
+    from src.extractors import fetch_wom_player_data
+    players = fetch_wom_player_data(players, config)
+
     print("Fetching WOM event data...")
     players = fetch_wom_event_data(players, config)
 
@@ -25,7 +29,8 @@ def run_pipeline(config_path: str):
     print("Applying scoring rules...")
     for p in players:
         calculate_ca_score(p, config)
-        calculate_pvm_score(p, config)
+        calculate_clan_records_score(p, config)
+        calculate_ehb_ehp_score(p, config)
         calculate_activity_score(p, config)
         
     print("Calculating synergy...")
@@ -49,7 +54,7 @@ def export_to_csv(players: List[Player], output_path: str):
         writer = csv.writer(f)
         writer.writerow([
             "RSN", "Total Score (0-100)", "Raw Points",
-            "PvM Score", "Activity Score", "CA Score",
+            "Clan Records Score", "EHB/EHP Score", "Activity Score", "CA Score",
             "Played Mostly on Alt", "Region", "Avg Event Percentile", "Peak Event Percentile", "Frequently Plays With"
         ])
         
@@ -58,7 +63,8 @@ def export_to_csv(players: List[Player], output_path: str):
                 p.rsn,
                 p.total_score,
                 p.raw_score,
-                p.score_breakdown.get('pvm_score', 0),
+                p.score_breakdown.get('clan_records_score', 0),
+                p.score_breakdown.get('ehb_ehp_score', 0),
                 p.score_breakdown.get('activity_score', 0),
                 p.score_breakdown.get('ca_score', 0),
                 "Yes" if p.played_mostly_on_alt else "No",
