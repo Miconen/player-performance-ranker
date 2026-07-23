@@ -153,9 +153,12 @@ def fetch_internal_api_data(players: List[Player], config: Config, refresh: bool
                     wom_id_int = int(wom_id_str)
                     if wom_id_int not in p.wom_ids:
                         p.wom_ids.append(wom_id_int)
-                        # Set primary wom_id to the first one for backwards compatibility
-                        if p.wom_id is None:
-                            p.wom_id = wom_id_int
+                    
+                    if rsn_obj.get("rsn", "").lower() == p.rsn.lower():
+                        p.wom_id = wom_id_int
+                        
+            if p.wom_id is None and p.wom_ids:
+                p.wom_id = p.wom_ids[0]
             
             p.internal_points = match.get("points", 0)
             p.internal_rank = match.get("rank", 0)
@@ -218,6 +221,8 @@ def fetch_wom_event_data(players: List[Player], config: Config, refresh: bool = 
                     # We might have multiple accounts participating.
                     # Sum the gains from all accounts for this user in the same event
                     total_gained = 0
+                    wom_ids_used = []
+                    team_name = ""
                     for part in participations:
                         player_obj = part.get('player', {})
                         if player_obj.get('id') in p.wom_ids:
@@ -226,6 +231,10 @@ def fetch_wom_event_data(players: List[Player], config: Config, refresh: bool = 
                             gained = progress.get('gained', 0)
                             if gained > 0:
                                 total_gained += gained
+                                if player_obj.get('id') not in wom_ids_used:
+                                    wom_ids_used.append(player_obj.get('id'))
+                                if 'teamName' in part and part['teamName']:
+                                    team_name = part['teamName']
                     
                     if total_gained > 0:
                         percentile = 0.0
@@ -239,15 +248,21 @@ def fetch_wom_event_data(players: List[Player], config: Config, refresh: bool = 
                         stat = WomEventStat(
                             event_id=eid,
                             event_name=event_data.get('title', f"Event {eid}"),
-                            percentile=percentile
+                            percentile=percentile,
+                            wom_ids_used=wom_ids_used,
+                            team_name=team_name
                         )
+                        
+                        combat_skills = {'attack', 'strength', 'defence', 'hitpoints', 'ranged', 'magic', 'prayer'}
                         
                         if metric == 'ehb':
                             stat.ehb_gained = total_gained
                         elif metric == 'ehp':
                             stat.ehp_gained = total_gained
+                        elif metric in combat_skills:
+                            stat.combat_xp_gained = total_gained
                         else:
-                            # Assume it's a skill if not EHB/EHP
+                            # Assume it's a non-combat skill if not EHB/EHP and not combat
                             stat.non_combat_xp_gained = total_gained
                             
                         p.wom_event_stats.append(stat)
