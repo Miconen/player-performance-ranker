@@ -45,6 +45,7 @@ class Player:
     total_score: float = 0.0  # Clamped score
     frequently_plays_with: List[str] = field(default_factory=list)
     played_mostly_on_alt: bool = False
+    region: str = "Other"
 
     # Relative performance metrics across all events
     avg_event_percentile: float = 0.0
