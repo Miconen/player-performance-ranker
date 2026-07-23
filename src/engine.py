@@ -47,7 +47,7 @@ def export_to_csv(players: List[Player], output_path: str):
         writer.writerow([
             "RSN", "Total Score (0-100)", "Raw Points",
             "PvM Score", "Activity Score", "CA Score",
-            "Tags", "XP Preference", "Avg Event Percentile", "Peak Event Percentile", "Frequently Plays With"
+            "Played Mostly on Alt", "Avg Event Percentile", "Peak Event Percentile", "Frequently Plays With"
         ])
         
         for p in players:
@@ -58,8 +58,7 @@ def export_to_csv(players: List[Player], output_path: str):
                 p.score_breakdown.get('pvm_score', 0),
                 p.score_breakdown.get('activity_score', 0),
                 p.score_breakdown.get('ca_score', 0),
-                " | ".join(p.tags),
-                p.xp_preference,
+                "Yes" if p.played_mostly_on_alt else "No",
                 p.avg_event_percentile,
                 p.peak_event_percentile,
                 ", ".join(p.frequently_plays_with)

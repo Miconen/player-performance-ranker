@@ -13,10 +13,8 @@ def calculate_ca_score(player: Player, config: Config) -> Player:
     
     if ca_count > 400:
         score = ca_values.get("Grandmaster", 40)
-        player.tags.append("#GM")
     elif ca_count > 300:
         score = ca_values.get("Master", 25)
-        player.tags.append("#MasterCA")
     elif ca_count > 200:
         score = ca_values.get("Elite", 10)
     elif ca_count > 0:
@@ -25,10 +23,8 @@ def calculate_ca_score(player: Player, config: Config) -> Player:
         # Fallback to self-reported CSV if API returned no data
         if "grandmaster" in tier_str or "gm" in tier_str:
             score = ca_values.get("Grandmaster", 40)
-            player.tags.append("#GM")
         elif "master" in tier_str:
             score = ca_values.get("Master", 25)
-            player.tags.append("#MasterCA")
         elif "elite" in tier_str:
             score = ca_values.get("Elite", 10)
         elif "hard" in tier_str:
@@ -82,9 +78,6 @@ def calculate_pvm_score(player: Player, config: Config) -> Player:
             
     player.score_breakdown['pvm_score'] = score
     player.raw_score += score
-    
-    if score > 100:
-        player.tags.append("#PVM_Carry")
         
     return player
 
@@ -107,9 +100,6 @@ def calculate_activity_score(player: Player, config: Config) -> Player:
     
     volume_score = event_count_score + ehb_score + xp_score
     score += volume_score
-    
-    if total_ehb > 50 or total_xp > 50000000:
-        player.tags.append("#Grinder")
 
     # Add flat participation points for internal clan events
     for event in player.clan_events:
@@ -120,13 +110,6 @@ def calculate_activity_score(player: Player, config: Config) -> Player:
             score += 10
         elif placement <= 10:
             score += 5
-
-    # Availability text parsing
-    avail_lower = player.availability_notes.lower()
-    if "every day" in avail_lower or "go hard" in avail_lower or "active" in avail_lower:
-        player.tags.append("#Active")
-    if "festival" in avail_lower or "vacation" in avail_lower or "busy" in avail_lower:
-        player.tags.append("#Limited_Time")
 
     player.score_breakdown['activity_score'] = round(score, 2)
     player.raw_score += score
@@ -162,18 +145,6 @@ def calculate_synergy(players: list[Player], config: Config) -> list[Player]:
                     
         if played_on_alt >= played_on_main and played_on_alt > 0:
             p.played_mostly_on_alt = True
-            p.tags.append("#Playing_On_Alt")
-            
-        # 2. XP Preference check
-        total_combat_xp = sum(stat.combat_xp_gained for stat in p.wom_event_stats)
-        total_non_combat_xp = sum(stat.non_combat_xp_gained for stat in p.wom_event_stats)
-        
-        if total_combat_xp > total_non_combat_xp:
-            p.xp_preference = "Combat"
-        elif total_non_combat_xp > total_combat_xp:
-            p.xp_preference = "Skilling"
-        else:
-            p.xp_preference = "Balanced"
 
     # 3. Teammates check
     # Map each player to a set of their event teams

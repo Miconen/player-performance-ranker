@@ -43,10 +43,8 @@ class Player:
     score_breakdown: Dict[str, float] = field(default_factory=dict) 
     raw_score: float = 0.0
     total_score: float = 0.0  # Clamped score
-    tags: List[str] = field(default_factory=list) 
     frequently_plays_with: List[str] = field(default_factory=list)
     played_mostly_on_alt: bool = False
-    xp_preference: str = ""
 
     # Relative performance metrics across all events
     avg_event_percentile: float = 0.0
