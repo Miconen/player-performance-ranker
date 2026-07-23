@@ -28,8 +28,6 @@ def calculate_ca_score(player: Player, config: Config) -> Player:
             player.ca_tier = "Hard"
         else:
             player.ca_tier = "None"
-            
-    player.score_breakdown['raw_ca'] = config.ca_tier_values.get(player.ca_tier, 0.0)
         
     return player
 
@@ -99,7 +97,7 @@ def apply_s_curve_normalization(players: list[Player]) -> list[Player]:
     if not players:
         return players
         
-    categories = ['clan_records', 'custom_ehb', 'ehp', 'activity', 'ca']
+    categories = ['clan_records', 'custom_ehb', 'ehp', 'activity']
     
     for cat in categories:
         raw_key = f"raw_{cat}"
@@ -112,8 +110,9 @@ def apply_s_curve_normalization(players: list[Player]) -> list[Player]:
         for p in players:
             raw = p.score_breakdown.get(raw_key, 0.0)
             
-            # Waning logarithmic curve
-            ratio = math.log(raw + 1) / math.log(max_raw + 1)
+            # True S-curve using a sine wave
+            x = raw / max_raw if max_raw > 0 else 0.0
+            ratio = (math.sin(x * math.pi - math.pi / 2) + 1) / 2
             
             # Scale each category score out of 100 to balance them
             norm_score = ratio * 100.0
@@ -130,9 +129,19 @@ def apply_s_curve_normalization(players: list[Player]) -> list[Player]:
         
         # Sum the normalized scores
         total_norm = sum(p.score_breakdown.get(f"norm_{c}", 0.0) for c in categories)
-        # Average them
-        p.total_score = round(total_norm / len(categories), 2)
+        # Average them into a raw total score
+        p.total_score = total_norm / len(categories)
         
+    # Stretch overall scores to 0-100 range
+    max_total = max((p.total_score for p in players), default=0.0)
+    min_total = min((p.total_score for p in players), default=0.0)
+    
+    for p in players:
+        if max_total == min_total:
+            p.total_score = 100.0 if max_total > 0 else 0.0
+        else:
+            p.total_score = round(((p.total_score - min_total) / (max_total - min_total)) * 100.0, 2)
+            
     return players
 
 def calculate_synergy(players: list[Player], config: Config) -> list[Player]:

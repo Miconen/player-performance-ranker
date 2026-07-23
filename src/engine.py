@@ -57,7 +57,7 @@ def export_to_csv(players: List[Player], output_path: str):
             "RSN", "Total Score (0-100)", 
             "Availability", "Ironman", "Region",
             "Activity Score (0-100)", "Custom EHB Score (0-100)", "EHP Score (0-100)", 
-            "CA Tier", "CA Score (0-100)", "Clan Records Score (0-100)",
+            "CA Tier", "Clan Records Score (0-100)",
             "Avg Event Percentile", "Peak Event Percentile",
             "Played Mostly on Alt", "Frequently Plays With"
         ])
@@ -73,7 +73,6 @@ def export_to_csv(players: List[Player], output_path: str):
                 p.score_breakdown.get('norm_custom_ehb', 0),
                 p.score_breakdown.get('norm_ehp', 0),
                 p.ca_tier,
-                p.score_breakdown.get('norm_ca', 0),
                 p.score_breakdown.get('norm_clan_records', 0),
                 p.avg_event_percentile,
                 p.peak_event_percentile,
