@@ -124,12 +124,17 @@ def apply_s_curve_normalization(players: list[Player]) -> list[Player]:
                 
             p.score_breakdown[norm_key] = round(norm_score, 2)
             
-    # Calculate Total Score as an average of the 5 balanced categories
+    # Calculate Total Score by clamping raw points across all users
     for p in players:
-        total = sum(p.score_breakdown.get(f"norm_{c}", 0.0) for c in categories)
-        p.total_score = round(total / len(categories), 2)
-        # We can store the raw sum for transparency/debug if needed
         p.raw_score = round(sum(p.score_breakdown.get(f"raw_{c}", 0.0) for c in categories), 2)
+        
+    max_raw_total = max((p.raw_score for p in players), default=0.0)
+    if max_raw_total == 0:
+        max_raw_total = 1.0
+        
+    for p in players:
+        ratio = math.log(p.raw_score + 1) / math.log(max_raw_total + 1)
+        p.total_score = round(ratio * 100, 2)
         
     return players
 
