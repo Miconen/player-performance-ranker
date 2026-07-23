@@ -9,6 +9,7 @@ class WomEventStat:
     ehp_gained: float = 0.0
     combat_xp_gained: int = 0
     non_combat_xp_gained: int = 0
+    percentile: float = 0.0
 
 @dataclass
 class Player:
@@ -24,6 +25,8 @@ class Player:
     
     # --- 2. Enriched Data (From Internal API) ---
     wom_id: Optional[int] = None
+    wom_ids: List[int] = field(default_factory=list) # Store all wom_ids for alt accounts
+    internal_user_id: Optional[str] = None
     internal_points: int = 0
     internal_rank: int = 0
     internal_tier_name: str = ""
