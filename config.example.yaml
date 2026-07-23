@@ -1,4 +1,4 @@
-internal_api_base_url: "https://api-production-737b.up.railway.app"
+internal_api_base_url: ""
 guild_id: "979445890064470036"
 wom_api_base_url: "https://api.wiseoldman.net/v2"
 
@@ -7,9 +7,7 @@ output_csv_path: "./data/draft_ratings.csv"
 cache_directory: "./data_cache"
 
 wom_event_ids:
-  - 24934
-  - 47847
-  - 23494
+  - 
 
 boss_tiers:
   tier_1_value: 50
