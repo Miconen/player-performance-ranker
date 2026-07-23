@@ -150,7 +150,9 @@ def fetch_wom_event_data(players: List[Player], config: Config, refresh: bool = 
     global_event_stats = {}
     
     for eid in event_ids:
-        cache_path = os.path.join(config.cache_directory, 'wom_events', f'{eid}.json')
+        cache_dir = os.path.join(config.cache_directory, 'wom_events')
+        os.makedirs(cache_dir, exist_ok=True)
+        cache_path = os.path.join(cache_dir, f'{eid}.json')
         event_data = None
         
         if os.path.exists(cache_path) and not refresh:
