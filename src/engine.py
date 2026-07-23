@@ -3,7 +3,7 @@ from typing import List
 from src.config import Config
 from src.models import Player
 from src.extractors import parse_signup_sheet, fetch_internal_api_data, fetch_wom_event_data
-from src.rules import calculate_ca_score, calculate_pvm_score, calculate_activity_score, apply_s_curve_normalization
+from src.rules import calculate_ca_score, calculate_pvm_score, calculate_activity_score, apply_s_curve_normalization, calculate_synergy
 
 def run_pipeline(config_path: str):
     config = Config(config_path)
@@ -28,6 +28,9 @@ def run_pipeline(config_path: str):
         calculate_pvm_score(p, config)
         calculate_activity_score(p, config)
         
+    print("Calculating synergy...")
+    players = calculate_synergy(players)
+        
     print("Normalizing scores...")
     players = apply_s_curve_normalization(players)
 
@@ -44,7 +47,7 @@ def export_to_csv(players: List[Player], output_path: str):
         writer.writerow([
             "RSN", "Discord Name", "Total Score (0-100)", "Raw Points",
             "PvM Score", "Activity Score", "CA Score",
-            "Tags", "Avg Event Percentile", "Peak Event Percentile"
+            "Tags", "Avg Event Percentile", "Peak Event Percentile", "Frequently Plays With"
         ])
         
         for p in players:
@@ -58,5 +61,6 @@ def export_to_csv(players: List[Player], output_path: str):
                 p.score_breakdown.get('ca_score', 0),
                 " | ".join(p.tags),
                 p.avg_event_percentile,
-                p.peak_event_percentile
+                p.peak_event_percentile,
+                ", ".join(p.frequently_plays_with)
             ])

@@ -67,28 +67,35 @@ def parse_signup_sheet(filepath: str) -> List[Player]:
 
 def fetch_internal_api_data(players: List[Player], config: Config, refresh: bool = False):
     """
-    Since the internal API can query multiple users, we might want to batch it, 
-    but for simplicity and caching, let's fetch the whole guild or individual users if the endpoint supports it.
-    The prompt gave a schema for GET /api/v1/guilds/{guild_id}/users/wom/{wom_ids} but we don't have wom_ids yet.
-    Wait, the internal API response provided in the first prompt was a list of users, maybe from a general endpoint.
-    Let's fetch by RSN if we don't have the WOM id. But wait, if we fetch all users from the guild, it's one call.
-    Let's assume there is a local cache of the whole internal DB or we ping it once.
-    For this mock implementation, I'll pretend we hit the internal API once for the entire guild, 
-    and match by RSN (case-insensitive).
+    Fetches the internal API data for all players using their RSNs.
     """
-    
-    # We will simulate the internal API response. Since we don't have a live API,
-    # if a cache file exists (like an export), we use it.
     internal_cache_path = os.path.join(config.cache_directory, 'internal_api', 'guild_data.json')
     
     guild_data = []
-    if os.path.exists(internal_cache_path):
-        with open(internal_cache_path, 'r', encoding='utf-8') as f:
-            guild_data = json.load(f)
-    else:
-        # In a real scenario, requests.get(...)
-        # We will just write a mock file for "Comfy hug" matching a signup later, or assume empty if no API.
-        pass
+    if os.path.exists(internal_cache_path) and not refresh:
+        try:
+            with open(internal_cache_path, 'r', encoding='utf-8') as f:
+                guild_data = json.load(f)
+        except:
+            guild_data = []
+
+    # If cache is empty or we are refreshing, we fetch from the API
+    if not guild_data or refresh:
+        rsns = [p.rsn for p in players if p.rsn]
+        # We can chunk RSNs if there are too many, but for now we fetch all at once
+        rsn_str = ",".join(rsns)
+        url = f"{config.internal_api_base_url}/api/v1/guilds/{config.guild_id}/users/rsn/{rsn_str}"
+        print(f"Fetching internal data for {len(rsns)} RSNs...")
+        try:
+            resp = requests.get(url)
+            if resp.status_code == 200:
+                guild_data = resp.json()
+                with open(internal_cache_path, 'w', encoding='utf-8') as f:
+                    json.dump(guild_data, f)
+            else:
+                print(f"Failed to fetch internal data. Status: {resp.status_code}")
+        except Exception as e:
+            print(f"Error fetching internal data: {e}")
 
     # Build a lookup map from RSN to internal user data
     rsn_map = {}
@@ -98,24 +105,33 @@ def fetch_internal_api_data(players: List[Player], config: Config, refresh: bool
             rsn_map[rsn] = user_data
 
     for p in players:
+        # Also try their discord name if RSN isn't found
         match = rsn_map.get(p.rsn.lower())
+        if not match and p.discord_name.lower() in rsn_map:
+            match = rsn_map.get(p.discord_name.lower())
+            
         if match:
             # Populate internal fields
+            p.internal_user_id = match.get("user_id")
+            
             # Extract WOM ID from the rsns list
             for rsn_obj in match.get("rsns", []):
-                if rsn_obj.get("rsn", "").lower() == p.rsn.lower():
-                    wom_id_str = rsn_obj.get("wom_id")
-                    if wom_id_str:
-                        p.wom_id = int(wom_id_str)
-                    break
+                wom_id_str = rsn_obj.get("wom_id")
+                if wom_id_str:
+                    wom_id_int = int(wom_id_str)
+                    if wom_id_int not in p.wom_ids:
+                        p.wom_ids.append(wom_id_int)
+                        # Set primary wom_id to the first one for backwards compatibility
+                        if p.wom_id is None:
+                            p.wom_id = wom_id_int
             
             p.internal_points = match.get("points", 0)
             p.internal_rank = match.get("rank", 0)
             p.internal_tier_name = match.get("tier", {}).get("name", "")
             p.pvm_records = match.get("records", [])
             p.clan_events = match.get("events", [])
-            p.internal_ca_achievements = [a.get("name") for a in match.get("achievements", []) if a.get("name") != "Maxed"] # Assuming CAs are here or in combat_achievements
-            # Handle CA actually in combat_achievements
+            
+            p.internal_ca_achievements = [a.get("name") for a in match.get("achievements", []) if a.get("name") != "Maxed"]
             if "combat_achievements" in match:
                 p.internal_ca_achievements = [ca.get("name") for ca in match.get("combat_achievements", [])]
 
@@ -143,11 +159,13 @@ def fetch_wom_event_data(players: List[Player], config: Config, refresh: bool = 
         else:
             try:
                 print(f"Fetching WOM Event {eid}...")
-                resp = requests.get(f"{wom_base_url}/events/{eid}")
+                resp = requests.get(f"{wom_base_url}/competitions/{eid}")
                 if resp.status_code == 200:
                     event_data = resp.json()
                     with open(cache_path, 'w', encoding='utf-8') as f:
                         json.dump(event_data, f)
+                else:
+                    print(f"Failed to fetch WOM event {eid}. Status: {resp.status_code}")
                 time.sleep(1) # Rate limit protection
             except Exception as e:
                 print(f"Error fetching WOM event {eid}: {e}")
@@ -155,35 +173,55 @@ def fetch_wom_event_data(players: List[Player], config: Config, refresh: bool = 
         if event_data and 'participations' in event_data:
             # Calculate percentiles for this event
             participations = event_data['participations']
+            all_gains = [part.get('progress', {}).get('gained', 0) for part in participations]
+            all_gains = [g for g in all_gains if g > 0]
+            all_gains.sort()
+            total_participants = len(all_gains)
             
             # Map wom_id to participation stats
             for p in players:
-                if p.wom_id:
+                if p.wom_ids:
+                    # We might have multiple accounts participating.
+                    # Sum the gains from all accounts for this user in the same event
+                    total_gained = 0
                     for part in participations:
                         player_obj = part.get('player', {})
-                        if player_obj.get('id') == p.wom_id:
+                        if player_obj.get('id') in p.wom_ids:
                             # They participated!
                             progress = part.get('progress', {})
                             gained = progress.get('gained', 0)
+                            if gained > 0:
+                                total_gained += gained
+                    
+                    if total_gained > 0:
+                        percentile = 0.0
+                        if total_participants > 0:
+                            # Number of people strictly less than their total gained amount
+                            less_than = len([g for g in all_gains if g < total_gained])
+                            percentile = (less_than / total_participants) * 100
+                        
+                        metric = event_data.get('metric', '')
+                        
+                        stat = WomEventStat(
+                            event_id=eid,
+                            event_name=event_data.get('title', f"Event {eid}"),
+                            percentile=percentile
+                        )
+                        
+                        if metric == 'ehb':
+                            stat.ehb_gained = total_gained
+                        elif metric == 'ehp':
+                            stat.ehp_gained = total_gained
+                        else:
+                            # Assume it's a skill if not EHB/EHP
+                            stat.non_combat_xp_gained = total_gained
                             
-                            # Note: WOM events might be skill (XP) or boss (EHB).
-                            # We can infer from the event type or just check metric.
-                            metric = event_data.get('metric', '')
+                        p.wom_event_stats.append(stat)
                             
-                            stat = WomEventStat(
-                                event_id=eid,
-                                event_name=event_data.get('title', f"Event {eid}")
-                            )
-                            
-                            if metric == 'ehb':
-                                stat.ehb_gained = gained
-                            elif metric == 'ehp':
-                                stat.ehp_gained = gained
-                            else:
-                                # Assume it's a skill if not EHB/EHP
-                                stat.non_combat_xp_gained = gained
-                                
-                            p.wom_event_stats.append(stat)
-                            break
+    for p in players:
+        if p.wom_event_stats:
+            percentiles = [stat.percentile for stat in p.wom_event_stats]
+            p.avg_event_percentile = round(sum(percentiles) / len(percentiles), 2)
+            p.peak_event_percentile = round(max(percentiles), 2)
                             
     return players

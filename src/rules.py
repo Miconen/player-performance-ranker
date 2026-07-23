@@ -106,6 +106,26 @@ def calculate_activity_score(player: Player, config: Config) -> Player:
     if ehb_score > 20 or xp_score > 20:
         player.tags.append("#Grinder")
 
+    # Add points for percentile performance
+    percentile_weights = config.event_percentile_weights
+    top_10 = percentile_weights.get("top_10_percent", 40)
+    top_25 = percentile_weights.get("top_25_percent", 25)
+    above_median = percentile_weights.get("above_median", 10)
+    
+    if player.avg_event_percentile >= 90:
+        score += top_10
+    elif player.avg_event_percentile >= 75:
+        score += top_25
+    elif player.avg_event_percentile >= 50:
+        score += above_median
+
+    if player.peak_event_percentile >= 90:
+        score += (top_10 * 0.5)
+    elif player.peak_event_percentile >= 75:
+        score += (top_25 * 0.5)
+    elif player.peak_event_percentile >= 50:
+        score += (above_median * 0.5)
+
     # Availability text parsing
     avail_lower = player.availability_notes.lower()
     if "every day" in avail_lower or "go hard" in avail_lower or "active" in avail_lower:
@@ -132,5 +152,35 @@ def apply_s_curve_normalization(players: list[Player]) -> list[Player]:
         sigmoid = 1 / (1 + math.exp(-x))
         # Map sigmoid [0, 1] to [0, 100]
         p.total_score = round(sigmoid * 100, 2)
+        
+    return players
+
+def calculate_synergy(players: list[Player]) -> list[Player]:
+    # Build a lookup of internal_user_id -> player
+    user_id_map = {p.internal_user_id: p for p in players if p.internal_user_id}
+    
+    for p in players:
+        teammates = {} # teammate internal_user_id -> count of shared records
+        for record in p.pvm_records:
+            team = record.get('team', [])
+            if len(team) > 1:
+                for member in team:
+                    uid = member.get('user_id')
+                    if uid and uid != p.internal_user_id and uid in user_id_map:
+                        teammates[uid] = teammates.get(uid, 0) + 1
+        
+        # Now format it into a string
+        synergy_list = []
+        # Sort by most shared records
+        sorted_teammates = sorted(teammates.items(), key=lambda item: item[1], reverse=True)
+        for uid, count in sorted_teammates:
+            teammate = user_id_map[uid]
+            name = teammate.discord_name if teammate.discord_name else teammate.rsn
+            if count > 1:
+                synergy_list.append(f"{name} ({count} records)")
+            else:
+                synergy_list.append(f"{name}")
+                
+        p.frequently_plays_with = synergy_list
         
     return players
