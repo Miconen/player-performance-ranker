@@ -1,0 +1,95 @@
+internal_api_base_url: "https://api-production-737b.up.railway.app"
+guild_id: "979445890064470036"
+wom_api_base_url: "https://api.wiseoldman.net/v2"
+
+default_csv_path: "./data/signups.csv"
+output_csv_path: "./data/draft_ratings.csv"
+cache_directory: "./data_cache"
+
+wom_event_ids:
+  - 24934
+  - 47847
+  - 23494
+
+boss_tiers:
+  tier_1_value: 50
+  tier_1_bosses:
+    - "awakened_duke_sucellus"
+    - "awakened_leviathan"
+    - "awakened_vardorvis"
+    - "awakened_whisperer"
+    - "inferno"
+    - "colosseum"
+    - "hmt_1"
+    - "hmt_2"
+    - "hmt_3"
+    - "hmt_4"
+    - "hmt_5"
+    - "cm_1"
+    - "cm_2"
+    - "cm_3"
+    - "cm_5"
+    - "cm_any"
+    - "toa_solo_500"
+    - "toa_team_500"
+    - "toa_solo_400"
+    - "toa_team_400"
+    - "doom_of_mokhaiotl_depth"
+  tier_2_value: 30
+  tier_2_bosses:
+    - "tob_1"
+    - "tob_2"
+    - "tob_3"
+    - "tob_4"
+    - "tob_5"
+    - "cox_1"
+    - "cox_2"
+    - "cox_3"
+    - "cox_5"
+    - "cox_any"
+    - "toa_solo_300"
+    - "toa_team_300"
+    - "pnm"
+    - "corrupted_gauntlet"
+    - "sep"
+    - "sep_5"
+    - "doom_of_mokhaiotl"
+  tier_3_value: 15
+  tier_3_bosses:
+    - "toa_solo_150"
+    - "toa_team_150"
+    - "nm_1"
+    - "nm_5"
+    - "duke_sucellus"
+    - "leviathan"
+    - "vardorvis"
+    - "whisperer"
+    - "araxxor"
+    - "hydra"
+    - "gauntlet"
+    - "muspah"
+    - "royal_titans_2"
+    - "yama_2"
+    - "demonic_brutus"
+    - "galvek"
+    - "seren"
+    - "glough"
+  tier_4_value: 5
+  tier_4_bosses:
+    - "zulrah"
+    - "vorkath"
+    - "fight_caves"
+    - "hespori"
+    - "ggs"
+    - "mimic"
+
+ca_tier_values:
+  Grandmaster: 40
+  Master: 25
+  Elite: 10
+  Hard: 5
+
+event_percentile_weights:
+  top_10_percent: 40
+  top_25_percent: 25
+  above_median: 10
