@@ -1,0 +1,61 @@
+[
+  {
+    "user_id": "136856906139566081",
+    "guild_id": "979445890064470036",
+    "points": 1370,
+    "rank": 15,
+    "tier": {
+      "name": "zenyte"
+    },
+    "rsns": [
+      {
+        "rsn": "Comfy hug",
+        "wom_id": "39527"
+      },
+      {
+        "rsn": "Axei0333",
+        "wom_id": "11111"
+      }
+    ],
+    "records": [
+      {
+        "record_id": 347,
+        "boss_name": "awakened_whisperer",
+        "display_name": "The Whisperer (Awakened)",
+        "category": "Desert Treasure II",
+        "solo": true,
+        "value_type": "time",
+        "value": 860
+      },
+      {
+        "record_id": 68,
+        "boss_name": "cox_5",
+        "display_name": "5-man",
+        "category": "Chambers of Xeric",
+        "solo": false,
+        "value_type": "time",
+        "value": 1229
+      }
+    ],
+    "events": [
+      {
+        "name": "Mining SOTW 2023",
+        "placement": 1
+      },
+      {
+        "name": "Summer Bingo 2024",
+        "placement": 1
+      }
+    ],
+    "achievements": [
+      {
+        "name": "Maxed"
+      }
+    ],
+    "combat_achievements": [
+      {
+        "name": "Grandmaster"
+      }
+    ]
+  }
+]
