@@ -90,6 +90,11 @@ def fetch_internal_api_data(players: List[Player], config: Config, refresh: bool
             resp = requests.get(url)
             if resp.status_code == 200:
                 guild_data = resp.json()
+                
+                # Ensure the directory exists before saving the cache
+                cache_dir = os.path.dirname(internal_cache_path)
+                os.makedirs(cache_dir, exist_ok=True)
+                
                 with open(internal_cache_path, 'w', encoding='utf-8') as f:
                     json.dump(guild_data, f)
             else:
