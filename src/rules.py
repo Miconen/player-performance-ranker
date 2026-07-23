@@ -34,49 +34,50 @@ def calculate_ca_score(player: Player, config: Config) -> Player:
     player.raw_score += score
     return player
 
-def calculate_pvm_score(player: Player, config: Config) -> Player:
-    boss_tiers = config.boss_tiers
+def calculate_clan_records_score(player: Player, config: Config) -> Player:
+    records_cache = getattr(config, 'guild_records_cache', {})
+    global_records = records_cache.get('records', [])
+    record_positions = {r.get('record_id'): r.get('position') for r in global_records}
+    
+    score = 0.0
+    for record in player.pvm_records:
+        rid = record.get('record_id')
+        pos = record_positions.get(rid)
+        if pos == 1:
+            score += 15.0
+        elif pos == 2:
+            score += 10.0
+        elif pos == 3:
+            score += 5.0
+            
+    player.score_breakdown['clan_records_score'] = score
+    player.raw_score += score
+    return player
+
+def calculate_ehb_ehp_score(player: Player, config: Config) -> Player:
     score = 0.0
     
-    tier_1_value = boss_tiers.get("tier_1_value", 50)
-    tier_1_bosses = boss_tiers.get("tier_1_bosses", [])
+    # 1. Standard EHB and EHP
+    # Scale them to grant decent points without breaking the S-curve
+    # EHB is much harder to get than EHP.
+    ehb_pts = player.wom_ehb / 25.0
+    ehp_pts = player.wom_ehp / 50.0
     
-    tier_2_value = boss_tiers.get("tier_2_value", 30)
-    tier_2_bosses = boss_tiers.get("tier_2_bosses", [])
+    score += ehb_pts + ehp_pts
     
-    tier_3_value = boss_tiers.get("tier_3_value", 15)
-    tier_3_bosses = boss_tiers.get("tier_3_bosses", [])
-
-    tier_4_value = boss_tiers.get("tier_4_value", 5)
-    tier_4_bosses = boss_tiers.get("tier_4_bosses", [])
+    # 2. Custom EHB (Valuing harder bosses higher)
+    custom_ehb_pts = 0.0
+    for boss_name, kills in player.boss_kills.items():
+        boss_weight = config.custom_ehb_weights.get(boss_name, 0.0)
+        custom_ehb_pts += (kills * boss_weight)
+        
+    score += custom_ehb_pts
     
-    # Check verified internal records first
-    verified_bosses_hit = set()
-    for record in player.pvm_records:
-        b = record.get("boss_name")
-        if b and b not in verified_bosses_hit:
-            verified_bosses_hit.add(b)
-            if b in tier_1_bosses:
-                score += tier_1_value
-            elif b in tier_2_bosses:
-                score += tier_2_value
-            elif b in tier_3_bosses:
-                score += tier_3_value
-            elif b in tier_4_bosses:
-                score += tier_4_value
-                
-    # If they have no verified records, let's use their self-reported bosses but at a 50% penalty
-    if not player.pvm_records and player.csv_comfortable_bosses:
-        for b in player.csv_comfortable_bosses:
-            b_lower = b.lower()
-            # Loose text matching
-            if "awakened" in b_lower or "inferno" in b_lower or "colosseum" in b_lower or "hard mode tob" in b_lower:
-                score += (tier_1_value * 0.5)
-            elif "theatre of blood" in b_lower or "chambers of xeric" in b_lower or "nex" in b_lower:
-                score += (tier_2_value * 0.5)
-            # Just rough approximations for self-reported
-            
-    player.score_breakdown['pvm_score'] = score
+    # 3. Maxed Bonus
+    if player.is_maxed:
+        score += 15.0
+        
+    player.score_breakdown['ehb_ehp_score'] = round(score, 2)
     player.raw_score += score
         
     return player

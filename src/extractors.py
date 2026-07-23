@@ -167,6 +167,13 @@ def fetch_internal_api_data(players: List[Player], config: Config, refresh: bool
             p.clan_events = match.get("events", [])
             
             p.internal_ca_achievements = [a.get("name") for a in match.get("achievements", []) if a.get("name") != "Maxed"]
+            
+            # Check maxed status
+            for a in match.get("achievements", []):
+                if a.get("name") == "Maxed":
+                    p.is_maxed = True
+                    break
+                    
             if "combat_achievements" in match:
                 p.internal_ca_achievements = [ca.get("name") for ca in match.get("combat_achievements", [])]
 
@@ -273,4 +280,50 @@ def fetch_wom_event_data(players: List[Player], config: Config, refresh: bool = 
             p.avg_event_percentile = round(sum(percentiles) / len(percentiles), 2)
             p.peak_event_percentile = round(max(percentiles), 2)
                             
+    return players
+
+def fetch_wom_player_data(players: List[Player], config: Config, refresh: bool = False):
+    wom_base_url = config.wom_api_base_url
+    cache_dir = os.path.join(config.cache_directory, 'wom_players')
+    os.makedirs(cache_dir, exist_ok=True)
+    
+    for p in players:
+        if p.rsn:
+            # Safely encode the RSN for URL use
+            import urllib.parse
+            safe_rsn = urllib.parse.quote(p.rsn)
+            cache_path = os.path.join(cache_dir, f'{p.rsn.replace(" ", "_")}.json')
+            player_data = None
+            
+            if os.path.exists(cache_path) and not refresh:
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    player_data = json.load(f)
+            else:
+                try:
+                    print(f"Fetching WOM Player {p.rsn}...")
+                    resp = requests.get(f"{wom_base_url}/players/{safe_rsn}")
+                    if resp.status_code == 200:
+                        player_data = resp.json()
+                        with open(cache_path, 'w', encoding='utf-8') as f:
+                            json.dump(player_data, f)
+                    else:
+                        print(f"Failed to fetch WOM player {p.rsn}. Status: {resp.status_code}")
+                    time.sleep(1) # Rate limit protection
+                except Exception as e:
+                    print(f"Error fetching WOM player {p.rsn}: {e}")
+                    
+            if player_data:
+                p.wom_ehb = player_data.get('ehb', 0.0)
+                p.wom_ehp = player_data.get('ehp', 0.0)
+                
+                # Extract boss killcounts
+                snapshot = player_data.get('latestSnapshot', {})
+                data = snapshot.get('data', {})
+                bosses = data.get('bosses', {})
+                
+                for boss_name, boss_info in bosses.items():
+                    kills = boss_info.get('kills', -1)
+                    if kills > 0:
+                        p.boss_kills[boss_name] = kills
+                        
     return players

@@ -9,77 +9,17 @@ cache_directory: "./data_cache"
 wom_event_ids:
   - 
 
-boss_tiers:
-  tier_1_value: 50
-  tier_1_bosses:
-    - "awakened_duke_sucellus"
-    - "awakened_leviathan"
-    - "awakened_vardorvis"
-    - "awakened_whisperer"
-    - "inferno"
-    - "colosseum"
-    - "hmt_1"
-    - "hmt_2"
-    - "hmt_3"
-    - "hmt_4"
-    - "hmt_5"
-    - "cm_1"
-    - "cm_2"
-    - "cm_3"
-    - "cm_5"
-    - "cm_any"
-    - "toa_solo_500"
-    - "toa_team_500"
-    - "toa_solo_400"
-    - "toa_team_400"
-    - "doom_of_mokhaiotl_depth"
-  tier_2_value: 30
-  tier_2_bosses:
-    - "tob_1"
-    - "tob_2"
-    - "tob_3"
-    - "tob_4"
-    - "tob_5"
-    - "cox_1"
-    - "cox_2"
-    - "cox_3"
-    - "cox_5"
-    - "cox_any"
-    - "toa_solo_300"
-    - "toa_team_300"
-    - "pnm"
-    - "corrupted_gauntlet"
-    - "sep"
-    - "sep_5"
-    - "doom_of_mokhaiotl"
-  tier_3_value: 15
-  tier_3_bosses:
-    - "toa_solo_150"
-    - "toa_team_150"
-    - "nm_1"
-    - "nm_5"
-    - "duke_sucellus"
-    - "leviathan"
-    - "vardorvis"
-    - "whisperer"
-    - "araxxor"
-    - "hydra"
-    - "gauntlet"
-    - "muspah"
-    - "royal_titans_2"
-    - "yama_2"
-    - "demonic_brutus"
-    - "galvek"
-    - "seren"
-    - "glough"
-  tier_4_value: 5
-  tier_4_bosses:
-    - "zulrah"
-    - "vorkath"
-    - "fight_caves"
-    - "hespori"
-    - "ggs"
-    - "mimic"
+custom_ehb_weights:
+  "tzhaar_ket_raks_challenges": 0.0
+  "inferno": 1.0
+  "fortis_colosseum": 1.0
+  "awakened_duke_sucellus": 0.5
+  "awakened_leviathan": 0.5
+  "awakened_vardorvis": 0.5
+  "awakened_whisperer": 0.5
+  "theatre_of_blood_hard_mode": 0.3
+  "chambers_of_xeric_challenge_mode": 0.2
+  "tombs_of_amascut_expert": 0.2
 
 ca_tier_values:
   Grandmaster: 40
