@@ -5,29 +5,16 @@ import math
 def calculate_ca_score(player: Player, config: Config) -> Player:
     tier_str = player.csv_ca_tier.lower()
     
-    # We heavily base this on the internal CA count since it reflects verified completions
-    ca_count = len(player.internal_ca_achievements)
-    
-    if ca_count > 400:
+    if "grandmaster" in tier_str or "grand master" in tier_str or "gm" in tier_str:
         player.ca_tier = "Grandmaster"
-    elif ca_count > 300:
+    elif "master" in tier_str or "baby" in tier_str or "mastah" in tier_str:
         player.ca_tier = "Master"
-    elif ca_count > 200:
+    elif "elite" in tier_str:
         player.ca_tier = "Elite"
-    elif ca_count > 0:
+    elif "hard" in tier_str:
         player.ca_tier = "Hard"
     else:
-        # Fallback to self-reported CSV if API returned no data
-        if "grandmaster" in tier_str or "grand master" in tier_str or "gm" in tier_str:
-            player.ca_tier = "Grandmaster"
-        elif "master" in tier_str or "baby" in tier_str or "mastah" in tier_str:
-            player.ca_tier = "Master"
-        elif "elite" in tier_str:
-            player.ca_tier = "Elite"
-        elif "hard" in tier_str:
-            player.ca_tier = "Hard"
-        else:
-            player.ca_tier = "None"
+        player.ca_tier = "None"
         
     return player
 
