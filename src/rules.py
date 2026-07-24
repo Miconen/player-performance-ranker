@@ -18,9 +18,9 @@ def calculate_ca_score(player: Player, config: Config) -> Player:
         player.ca_tier = "Hard"
     else:
         # Fallback to self-reported CSV if API returned no data
-        if "grandmaster" in tier_str or "gm" in tier_str:
+        if "grandmaster" in tier_str or "grand master" in tier_str or "gm" in tier_str:
             player.ca_tier = "Grandmaster"
-        elif "master" in tier_str:
+        elif "master" in tier_str or "baby" in tier_str or "mastah" in tier_str:
             player.ca_tier = "Master"
         elif "elite" in tier_str:
             player.ca_tier = "Elite"
